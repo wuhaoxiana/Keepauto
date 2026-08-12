@@ -49,10 +49,13 @@ log.addHandler(_handler)
 # 工具函数
 # ---------------------------------------------------------------------------
 def mask(name: str) -> str:
-    """用户名脱敏：显示前 4 位 + *****"""
+    """用户名脱敏：长度>=4时显示前2位和后2位，中间用*****替换"""
     if not name:
-        return "*****"
-    return (name[:4] + "*****") if len(name) > 4 else (name + "*****")
+       return "*****"
+    n = len(name)
+    if n < 4:
+       return name + "*****"
+    return name[:2] + "*****" + name[-2:]
 
 def bjt_date_str() -> str:
     """北京时间日期字符串，如 '2026年08月06日'"""
