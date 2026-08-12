@@ -58,11 +58,11 @@ def send_combined_notification(notify_data: dict) -> bool:
         display = escape(str(r.get("username", "")))
         lines.append(f"👉 账号：{display}")
         if not r.get("success"):
-            lines.append(f"     ❌ 签到失败：{escape(str(r.get('status', '')))}")
+            lines.append(f"❌ 签到失败：{escape(str(r.get('status', '')))}")
         elif r.get("new_signin"):
-            lines.append(f"     🎉 签到成功，余额 {r.get('balance_coins', 0.0):,.2f} 硬币")
+            lines.append(f"🎉 签到成功，余额 {r.get('balance_coins', 0.0):,.2f} 硬币")
         else:
-            lines.append(f"     ✅ 今日已签到，余额 {r.get('balance_coins', 0.0):,.2f} 硬币")
+            lines.append(f"✅ 今日已签到，余额 {r.get('balance_coins', 0.0):,.2f} 硬币")
     lines.append("----------------")
     lines.append(f"💰 <b>总余额</b>：{total_balance:,.2f} 硬币")
     message = "\n".join(lines)
