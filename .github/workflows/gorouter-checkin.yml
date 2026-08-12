@@ -2,7 +2,7 @@ name: GoRouter 每日签到
 
 on:
   schedule:
-    - cron: "20 16 * * *"
+    - cron: "5 16 * * *"
   workflow_dispatch:
 
 jobs:
