@@ -2,7 +2,7 @@ name: nuwax-auto-login
 
 on:
   schedule:
-    - cron: '10 16 * * *'   # 每天 UTC 16:10（北京时间 00:10）
+    - cron: '0 16 * * *'   # 每天 UTC 16:00（北京时间 00:00）
   workflow_dispatch:        # 支持手动触发
 
 jobs:
