@@ -23,13 +23,13 @@ def _format_account(r: dict) -> str:
 
     if not r.get("success"):
         return (f"👤 <b>{username}</b>\n"
-                f"   ❌ {escape(str(r.get('status', '处理失败')))}")
+                f"❌ {escape(str(r.get('status', '处理失败')))}")
 
     icon = "🎉" if r.get("new_signin") else "✅"
     vip_tag = " 👑VIP" if r.get("is_vip") else ""
     return (f"👤 <b>{username}</b>{vip_tag}\n"
-            f"   {icon} {escape(str(r.get('status', '')))}\n"
-            f"   💰 额度：{r.get('quota', 0):,}"
+            f"{icon} {escape(str(r.get('status', '')))}\n"
+            f"💰 额度：{r.get('quota', 0):,}"
             f"（永久 {r.get('permanent_quota', 0):,}"
             f" + 每日 {r.get('daily_quota', 0):,}）")
 
