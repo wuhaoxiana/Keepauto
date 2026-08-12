@@ -1,9 +1,9 @@
 name: 清理工作流历史记录
 
 on:
-  # 每周一凌晨 3 点（UTC）自动执行
+  # 每2天凌晨 3 点（UTC）自动执行
   schedule:
-    - cron: '0 3 * * 1'
+    - cron: '55 2 */2 * *'
   # 支持手动触发
   workflow_dispatch:
 
