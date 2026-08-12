@@ -58,17 +58,3 @@ jobs:
           git add output/socks5_proxy.txt output/socks5_proxy.csv
           git commit -m "chore: update socks5 proxy list $(date -u +%Y-%m-%d)" || echo "无变化，跳过提交"
           git push
-
-      - name: 🧹 清理旧的工作流运行记录
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          runs=$(gh run list --workflow="${{ github.workflow }}" --limit=100 --json databaseId --jq '.[].databaseId')
-          count=0
-          for run_id in $runs; do
-            count=$((count + 1))
-            if [ $count -gt 1 ]; then
-              echo "删除运行记录: $run_id"
-              gh run delete $run_id || true
-            fi
-          done 
