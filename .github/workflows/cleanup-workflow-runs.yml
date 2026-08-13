@@ -25,7 +25,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const KEEP = 5; // 每个 workflow 保留最近运行次数
+            const KEEP = 1; // 每个 workflow 保留最近运行次数
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const currentRunId = context.runId; // 当前运行 id，删除时跳过避免删到正在执行的自己
