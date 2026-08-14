@@ -28,12 +28,11 @@ jobs:
       - name: 📦 安装依赖
         run: pip install -r requirements.txt
 
-      - name: 📡 抓取 TG 节点
+      - name: 📡 抓取 TG 节点（免 API，t.me/s 网页版）
         id: fetch
         env:
-          TG_API_ID: ${{ secrets.TG_API_ID }}
-          TG_API_HASH: ${{ secrets.TG_API_HASH }}
-          TG_SESSION_STR: ${{ secrets.TG_SESSION_STR }}
+          CHANNEL: ${{ vars.TG_CHANNEL }}
+          FETCH_DAYS: ${{ vars.FETCH_DAYS }}
         run: python tg-fetch.py
 
       - name: 🔄 同步 9router 代理池
