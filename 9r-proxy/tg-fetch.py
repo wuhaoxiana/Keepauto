@@ -1,42 +1,48 @@
 #!/usr/bin/env python3
 """
-TG 频道 socks5 节点抓取脚本（GitHub Actions 专用）
+TG 频道 socks5 节点抓取脚本（GitHub Actions 专用）— 免 API 版
 
-从公开频道 @otcfxq（OTC分享群）获取最近 3 天的 socks5/http 代理节点：
-1. 正则提取 socks5:// 与 http(s):// 节点
-2. 剔除 #标签、@otcfxq、说明文字等后缀
-3. 以 ip:port 去重
-4. 输出到 socks5.txt
+从公开频道 @otcfxq（OTC分享群）抓取最近 N 天的 socks5/http 代理节点：
+1. 通过公开网页 https://t.me/s/<频道名> 抓取（无需 TG_API_ID / 无需登录 / 无需 Session）
+2. 正则提取 socks5:// 与 http(s):// 节点
+3. 剔除 #标签、@otcfxq、说明文字等后缀
+4. 以 ip:port 去重
+5. 输出到 socks5.txt
 
 需要的配置（环境变量）：
-  TG_API_ID        Telegram API ID
-  TG_API_HASH      Telegram API Hash
-  TG_SESSION_STR   Telethon 登录会话字符串
-  FETCH_DAYS       抓取最近 N 天，默认 3
+  CHANNEL       频道用户名（不带 @），默认 otcfxq
+  FETCH_DAYS    抓取最近 N 天，默认 3
+  MAX_PAGES     最多翻页数，默认 10（每页约 20 条消息）
+  OUTPUT_FILE   输出文件名，默认 socks5.txt
+
+说明：
+- 公开频道（有 @用户名）的 t.me/s 网页无需任何 Telegram API 凭证即可访问
+- 仅在频道为公开频道时适用；如频道转为私有，此方法失效
 """
 
 import os
 import re
 import sys
-import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-
-# Windows 事件循环策略，兼容本地调试
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+import requests
+from bs4 import BeautifulSoup
 
 # ================= 配置区域 =================
-TG_API_ID = os.getenv("TG_API_ID") or ""
-TG_API_HASH = os.getenv("TG_API_HASH") or ""
-TG_SESSION_STR = os.getenv("TG_SESSION_STR") or ""
+CHANNEL = os.getenv("CHANNEL") or "otcfxq"
 FETCH_DAYS = int(os.getenv("FETCH_DAYS") or "3")
-OUTPUT_FILE = "socks5.txt"
-CHANNEL = "@otcfxq"
+MAX_PAGES = int(os.getenv("MAX_PAGES") or "10")
+OUTPUT_FILE = os.getenv("OUTPUT_FILE") or "socks5.txt"
 # ============================================
+
+# 浏览器 UA，避免被 t.me 拒绝
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+}
 
 # 匹配 socks5/http/https 节点 URL（user:pass@ip:port 或 ip:port）
 # 示例: socks5://root:123456@59.36.149.183:1080#CN Wancheng... @otcfxq
@@ -58,58 +64,114 @@ def extract_nodes(text: str) -> list:
     return [m.group(0) for m in NODE_RE.finditer(text)]
 
 
-async def main():
-    if not TG_API_ID or not TG_API_HASH:
-        log.error("缺少 TG_API_ID 或 TG_API_HASH，请检查环境变量")
-        sys.exit(1)
-    if not TG_SESSION_STR:
-        log.error("缺少 TG_SESSION_STR，请先运行 tg-session.py 获取会话字符串")
-        sys.exit(1)
+def parse_page(html_text: str) -> list:
+    """解析 t.me/s 页面，返回 [(datetime, text, message_id), ...]（按页面顺序）"""
+    soup = BeautifulSoup(html_text, "html.parser")
+    items = []
+    for wrap in soup.select("div.tgme_widget_message_wrap"):
+        # 消息时间
+        dt = None
+        time_el = wrap.select_one("time.time")
+        if time_el and time_el.get("datetime"):
+            try:
+                dt = datetime.fromisoformat(time_el["datetime"].replace("Z", "+00:00"))
+            except ValueError:
+                pass
+        # 消息文本
+        text_el = wrap.select_one("div.tgme_widget_message_text")
+        text = text_el.get_text("\n", strip=True) if text_el else ""
+        # 消息 ID（用于翻页）
+        mid = None
+        link_el = wrap.select_one("a.tgme_widget_message_date")
+        if link_el and link_el.get("href"):
+            m = re.search(r"/(\d+)$", link_el["href"])
+            if m:
+                mid = int(m.group(1))
+        items.append((dt, text, mid))
+    return items
 
+
+def fetch_messages(channel: str, cutoff: datetime) -> list:
+    """通过 t.me/s 网页抓取频道消息，返回 [(datetime, text), ...]（仅保留 cutoff 之后）"""
+    all_msgs = []
+    before_id = None
+    for _ in range(MAX_PAGES):
+        url = f"https://t.me/s/{channel}"
+        if before_id:
+            url += f"?before={before_id}"
+
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=25)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            log.error("抓取 %s 失败: %s", url, e)
+            break
+
+        page_items = parse_page(resp.text)
+        if not page_items:
+            log.info("页面无消息，停止翻页")
+            break
+
+        for dt, text, _mid in page_items:
+            if text and extract_nodes(text):
+                if dt is None or dt >= cutoff:
+                    all_msgs.append((dt, text))
+
+        # 判断是否继续翻页
+        ids = [mid for _, _, mid in page_items if mid]
+        dates = [dt for dt, _, _ in page_items if dt]
+        if not ids:
+            log.info("无消息 ID，停止翻页")
+            break
+        oldest_id = min(ids)
+        if before_id is not None and oldest_id >= before_id:
+            log.info("翻页无新内容，停止")
+            break
+        before_id = oldest_id
+
+        # 如果本页最早的消息已早于 cutoff，下一页只会更早，可以停止
+        if dates and min(dates) < cutoff:
+            log.info("已到达 cutoff 时间范围内更早的消息，停止翻页")
+            break
+
+        # 每页最多约 20 条，少于 20 说明到底了
+        if len(page_items) < 20:
+            log.info("已到达频道消息底部，停止翻页")
+            break
+
+    return all_msgs
+
+
+def main():
     log.info("=" * 48)
-    log.info("TG 节点抓取启动")
-    log.info("目标频道: %s", CHANNEL)
-    log.info("抓取范围: 最近 %d 天", FETCH_DAYS)
+    log.info("TG 节点抓取启动（免 API 网页版）")
+    log.info("目标频道: @%s", CHANNEL)
+    log.info("抓取范围: 最近 %d 天 | 最多翻页 %d 页", FETCH_DAYS, MAX_PAGES)
 
-    client = TelegramClient(
-        StringSession(TG_SESSION_STR), int(TG_API_ID), TG_API_HASH
-    )
-    try:
-        await client.connect()
-        if not await client.is_user_authorized():
-            log.error("TG 会话已失效，请更新 TG_SESSION_STR")
-            sys.exit(1)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=FETCH_DAYS)
+    messages = fetch_messages(CHANNEL, cutoff)
+    log.info("获取含节点消息数: %d", len(messages))
 
-        entity = await client.get_entity(CHANNEL)
-        log.info("已连接频道: %s", getattr(entity, "title", CHANNEL))
+    seen = {}
+    for _dt, text in messages:
+        for node in extract_nodes(text):
+            # 去重: 以 ip:port 为 key（保留首次出现的完整 URL）
+            ip_port = NODE_RE.match(node)
+            key = f"{ip_port.group(2)}:{ip_port.group(3)}" if ip_port else node
+            seen.setdefault(key, node)
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=FETCH_DAYS)
-        seen = {}
-        total_messages = 0
-        async for msg in client.iter_messages(entity, offset_date=cutoff):
-            total_messages += 1
-            if not msg.text:
-                continue
-            for node in extract_nodes(msg.text):
-                # 去重: 以 ip:port 为 key（保留首次出现的完整 URL）
-                ip_port = NODE_RE.match(node)
-                key = f"{ip_port.group(2)}:{ip_port.group(3)}" if ip_port else node
-                seen.setdefault(key, node)
+    log.info("提取节点数: %d", len(seen))
 
-        log.info("扫描消息数: %d", total_messages)
-        log.info("提取节点数: %d", len(seen))
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        for node in seen.values():
+            f.write(node + "\n")
 
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            for node in seen.values():
-                f.write(node + "\n")
-
-        log.info("已写入 %s (%d 个节点)", OUTPUT_FILE, len(seen))
-        log.info("=" * 48)
-        if not seen:
-            sys.exit(1)  # 未抓取到节点，判定为失败
-    finally:
-        await client.disconnect()
+    log.info("已写入 %s (%d 个节点)", OUTPUT_FILE, len(seen))
+    log.info("=" * 48)
+    if not seen:
+        log.error("未抓取到节点，判定为失败")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

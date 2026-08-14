@@ -2,6 +2,9 @@
 
 从 TG 公开频道 [@otcfxq](https://t.me/otcfxq)（OTC分享群）获取 socks5/http 代理节点，同步到 9router 代理池，测试连通性后输出可用节点列表。
 
+> 💡 **免 API 版**：本工具通过公开频道网页 `https://t.me/s/otcfxq` 抓取节点，
+> **不需要 TG_API_ID / TG_API_HASH / TG_SESSION_STR**，无需登录 Telegram 账号。
+
 ## 工作流程
 
 ```
@@ -14,9 +17,11 @@ tg-fetch.py ──► socks5.txt ──► proxy-manager.py ──► socks5-otc
 
 | 变量 | 用途 | 必要 |
 |------|------|------|
-| `TG_API_ID` | Telegram API ID | 是 |
-| `TG_API_HASH` | Telegram API Hash | 是 |
-| `TG_SESSION_STR` | Telethon 会话字符串 | 是 |
+| `TG_API_ID` | ~~Telegram API ID~~（已移除，不再需要） | 否 |
+| `TG_API_HASH` | ~~Telegram API Hash~~（已移除，不再需要） | 否 |
+| `TG_SESSION_STR` | ~~Telethon 会话字符串~~（已移除，不再需要） | 否 |
+| `CHANNEL` | TG 公开频道用户名（不带 @），默认 `otcfxq` | 否 |
+| `FETCH_DAYS` | 抓取最近 N 天消息，默认 3 | 否 |
 | `TG_BOT_TOKEN` | TG 通知机器人 Token | 否 |
 | `TG_CHAT_ID` | TG 通知接收 Chat ID | 否 |
 | `R9_BASE_URL` | 9router 首页地址，https:// 开头 | 是 |
@@ -44,8 +49,7 @@ tg-fetch.py ──► socks5.txt ──► proxy-manager.py ──► socks5-otc
 # 安装依赖
 pip install -r requirements.txt
 
-# 1. 抓取 TG 节点
-export TG_API_ID=xxx TG_API_HASH=xxx TG_SESSION_STR=xxx
+# 1. 抓取 TG 节点（无需任何 TG 凭证）
 python tg-fetch.py
 
 # 2. 同步到 9router
