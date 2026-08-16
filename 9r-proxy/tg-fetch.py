@@ -168,9 +168,18 @@ def main():
 
     log.info("已写入 %s (%d 个节点)", OUTPUT_FILE, len(seen))
     log.info("=" * 48)
+
+    # 输出抓取结果到 GitHub Actions（供 workflow 判断是否跳过后续步骤）
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write(f"has_nodes={'true' if seen else 'false'}\n")
+
     if not seen:
-        log.error("未抓取到节点，判定为失败")
-        sys.exit(1)
+        log.warning("未抓取到节点：工作流将跳过后续同步步骤并发送 TG 通知")
+        # 不再判定为失败（exit 0），由 workflow 根据 has_nodes 分支处理：
+        # 未抓取到节点 -> 跳过 9router 同步 / 只发 TG 通知
+        sys.exit(0)
 
 
 if __name__ == "__main__":
