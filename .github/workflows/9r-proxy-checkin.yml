@@ -2,8 +2,8 @@ name: 9R-Proxy 代理同步
 
 on:
   schedule:
-    # 北京时间 18:00 = UTC 10:00
-    - cron: "0 10 * * *"
+    # 北京时间 9:00 = UTC 1:00
+    - cron: "55 0 * * *"
   workflow_dispatch:
 
 jobs:
