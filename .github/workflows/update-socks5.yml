@@ -1,84 +1,63 @@
-name: 🌐 更新 SOCKS5 代理列表
+name: 更新 SOCKS5 代理列表
 
 on:
   schedule:
     # 每天 UTC 00:05 执行
     # 北京时间：每天 08:05
     - cron: '5 0 * * *'
-
-  # 支持手动触发
   workflow_dispatch:
 
-# 🔐 Workflow 默认权限
-permissions:
-  contents: read
-  actions: write
-
 jobs:
-  # 🌐 更新 SOCKS5 代理
   update-socks5:
-    name: 🔄 更新 SOCKS5 代理列表
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write
 
     steps:
-      # 📥 1. 拉取仓库代码
+      # 拉取仓库代码
       - name: 📥 Checkout 仓库代码
         uses: actions/checkout@v4
 
-      # 🐍 2. 设置 Python 环境
+      # 设置 Python 环境
       - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 🌐 3. 获取最新 SOCKS5 代理列表
+      #  获取最新 SOCKS5 代理列表
       - name: 🌐 拉取最新 SOCKS5 代理列表
         run: |
-          echo "🚀 开始获取最新 SOCKS5 代理列表..."
-
           curl -s --max-time 30 \
             "https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/socks5/data.txt" \
             -o /tmp/socks5_raw.txt
 
-          echo "📊 原始节点数：$(wc -l < /tmp/socks5_raw.txt)"
+          echo "原始节点数：$(wc -l < /tmp/socks5_raw.txt)"
 
-      # 🌏 4. 筛选香港 / 新加坡 / 中国代理并测试可用性
-      - name: 🌏🇭🇰🇸🇬🇨🇳 筛选亚洲 SOCKS5 节点
+      # 筛选香港 / 新加坡 / 中国代理并测试可用性
+      - name: 🌏 筛选亚洲 SOCKS5 节点
         run: |
-          echo "🔍 开始筛选 SOCKS5 代理..."
-          echo "🌏 目标地区：🇭🇰 香港 | 🇸🇬 新加坡 | 🇨🇳 中国"
-          echo "🧪 正在测试节点可用性..."
-
           python3 scripts/filter_socks5.py \
             /tmp/socks5_raw.txt \
             /tmp/socks5_hk_sg_cn.txt
 
           echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "📋 筛选结果"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "🇭🇰 香港 | 🇸🇬 新加坡 | 🇨🇳 中国"
           echo ""
 
           cat /tmp/socks5_hk_sg_cn.txt
 
           echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "✅ 筛选完成"
           echo "📊 有效节点数：$(wc -l < /tmp/socks5_hk_sg_cn.txt)"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      # 📦 5. 生成代理列表文件
+      # 生成代理列表文件
       - name: 📦 生成 SOCKS5 代理列表文件
         run: |
-          echo "📁 正在生成代理列表文件..."
-
           mkdir -p output
-
-          # 📄 多行格式
           cp /tmp/socks5_hk_sg_cn.txt output/socks5_proxy.txt
-
-          # 📄 逗号分隔格式
           tr '\n' ',' < /tmp/socks5_hk_sg_cn.txt |
             sed 's/,$//' > output/socks5_proxy.csv
 
@@ -86,25 +65,21 @@ jobs:
           echo "✅ 文件生成完成："
           ls -lh output/
 
-      # 🔐 6. 更新 GitHub Actions Repository Variable
+      # 更新 GitHub Actions Repository Variable
       - name: 🔐 更新仓库变量 SOCKS5_PROXY
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          echo "🔄 正在更新 GitHub Actions 变量 SOCKS5_PROXY..."
-
           gh variable set SOCKS5_PROXY \
             --body "$(cat /tmp/socks5_hk_sg_cn.txt)" \
             --repo "${{ github.repository }}"
 
           echo "✅ SOCKS5_PROXY 更新成功！"
 
-      # 💾 7. 提交筛选结果到仓库（默认关闭）
+      # 提交筛选结果到仓库（默认关闭）
       - name: 💾 提交并推送筛选结果
         if: false
         run: |
-          echo "💾 准备提交 SOCKS5 代理列表..."
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -120,11 +95,10 @@ jobs:
 
           echo "✅ 代理列表已提交并推送到仓库！"
 
-      # 🎉 8. 完成
+      # 完成
       - name: 🎉 更新完成
         run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
           echo "🎉 SOCKS5 代理列表更新完成！"
           echo "🌐 节点数量：$(wc -l < /tmp/socks5_hk_sg_cn.txt)"
           echo "📅 更新时间：$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
