@@ -1,4 +1,4 @@
-name: Update SOCKS5 Proxy List
+name: 更新 SOCKS5 代理列表
 
 on:
   schedule:
