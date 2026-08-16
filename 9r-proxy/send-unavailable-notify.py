@@ -42,7 +42,7 @@ def send_notification():
         f"⏭️ <b>已 跳 过</b>：9router 同步与测试\n"
         f"📄 <b>socks5-otc.txt</b> 未更新\n"
         f"\n"
-        f"🔄 请检查@otcfxq是否正常发布节点"
+        f"🔄 请检查 @otcfxq 是否正常发布节点"
     )
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
