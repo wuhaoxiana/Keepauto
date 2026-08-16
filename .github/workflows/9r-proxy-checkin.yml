@@ -37,6 +37,7 @@ jobs:
 
       - name: 🔄 同步 9router 代理池
         id: sync
+        if: steps.fetch.outputs.has_nodes == 'true'
         env:
           R9_BASE_URL: ${{ vars.R9_BASE_URL }}
           R9_PASSWORD: ${{ secrets.R9_PASSWORD }}
@@ -44,8 +45,16 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: python proxy-manager.py
 
+      # 未抓取到节点时：跳过同步、提交，仅发送 TG 通知
+      - name: 📭 TG 通知：未抓取到节点
+        if: steps.fetch.outputs.has_nodes == 'false'
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python send-unavailable-notify.py
+
       - name: 📄 提交 socks5-otc.txt
-        if: always()
+        if: steps.fetch.outputs.has_nodes == 'true'
         working-directory: .   # 覆盖默认，回到仓库根目录
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
