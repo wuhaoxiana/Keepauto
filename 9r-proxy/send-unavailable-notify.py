@@ -36,14 +36,13 @@ def send_notification():
 
     message = (
         f"⚠️ <b>9Router 节点同步：未抓取到节点</b>\n"
-        f"----------------\n"
-        f"📅 <b>日期</b>：{date_str}\n"
-        f"📭 <b>TG 抓取</b>：未抓取到任何节点\n"
+        f"----------------------\n"
+        f"📅 <b>日  期</b>：{date_str}\n"
+        f"📭 <b>TG抓取</b>：未抓取到任何节点\n"
         f"⏭️ <b>已跳过</b>：9router 同步与测试\n"
         f"📄 <b>socks5-otc.txt</b> 未更新\n"
         f"\n"
-        f"🔄 请检查 TG 频道 @otcfxq 是否正常发布节点，"
-        f"或稍后手动触发 workflow。"
+        f"🔄 请检查@otcfxq是否正常发布节点"
     )
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
