@@ -335,9 +335,9 @@ def send_tg_notification(stats: dict):
         message = (
             f"⚠️ <b>9Router 代理池异常保护</b>\n"
             f"----------------\n"
-            f"📅 <b>日期</b>：{date_str}\n"
-            f"📥 <b>TG 抓取</b>：{stats['fetched']} 个节点\n"
-            f"🚫 <b>检测到系统性异常</b>：不通比例超过 90%\n"
+            f"📅 <b>同步日期</b>：{date_str}\n"
+            f"📥 <b>节点抓取</b>：{stats['fetched']} 个节点\n"
+            f"🚫 <b>检测异常</b>：不通比例超过 90%\n"
             f"🛡️ <b>已跳过删除</b>，代理池保持原状\n"
             f"📄 <b>socks5-otc.txt</b> 未更新"
         )
@@ -345,10 +345,10 @@ def send_tg_notification(stats: dict):
         message = (
             f"🎉 <b>9Router 代理池更新</b>\n"
             f"----------------\n"
-            f"📅 <b>日期</b>：{date_str}\n"
-            f"📥 <b>TG 抓取</b>：{stats['fetched']} 个节点\n"
-            f"➕ <b>新增</b>：{stats['added']} 个\n"
-            f"❌ <b>删除</b>：{stats['deleted']} 个（测试不通）\n"
+            f"📅 <b>同步日期</b>：{date_str}\n"
+            f"📥 <b>节点抓取</b>：{stats['fetched']} 个节点\n"
+            f"➕ <b>新增节点</b>：{stats['added']} 个\n"
+            f"❌ <b>删除节点</b>：{stats['deleted']} 个（测试不通）\n"
             f"✅ <b>最终可用</b>：{stats['total']} 个\n"
             f"📄 <b>socks5-otc.txt</b> 已更新"
         )
