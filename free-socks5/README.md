@@ -40,7 +40,7 @@ gh variable set SOCKS5_PROXY（base64 编码多行）→ 仓库变量
 ```
 .
 ├── .github/workflows/update-socks5.yml   # 定时任务（每天0点）
-├── scripts/filter_socks5.py              # 筛选 + 测活脚本
+├── free-socks5/filter_socks5.py              # 筛选 + 测活脚本
 └── README.md
 ```
 
@@ -48,8 +48,8 @@ gh variable set SOCKS5_PROXY（base64 编码多行）→ 仓库变量
 
 | 参数 | 位置 | 说明 |
 |------|------|------|
-| `MAX_PROXIES` | `scripts/filter_socks5.py` | 最多保留节点数，默认 10 |
-| `TIMEOUT` | `scripts/filter_socks5.py` | 单节点测活超时（秒），默认 5 |
+| `MAX_PROXIES` | `free-socks5/filter_socks5.py` | 最多保留节点数，默认 10 |
+| `TIMEOUT` | `free-socks5/filter_socks5.py` | 单节点测活超时（秒），默认 5 |
 | cron | `.github/workflows/update-socks5.yml` | 执行时间，默认 `0 0 * * *`（UTC 0点） |
 | 提交历史 | workflow 最后一步 | 默认关闭（`if: false`），如需保留历史改为 `true` |
 
