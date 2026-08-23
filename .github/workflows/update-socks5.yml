@@ -3,7 +3,7 @@ name: 更新 SOCKS5 代理列表
 on:
   schedule:
     # 每 4 小时执行一次 (UTC 0/4/8/12/16/20 点)
-    - cron: '0 */4 * * *'
+    - cron: '0 */1 * * *'
   workflow_dispatch:
 
 jobs:
