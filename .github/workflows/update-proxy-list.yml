@@ -1,0 +1,106 @@
+name: 更新代理列表
+
+# 添加权限配置
+permissions:
+  contents: write
+  actions: write
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
+on:
+  schedule:
+    # 每天早上7点和晚上7点更新代理列表（北京时间）
+    - cron: '0 23 * * *'  # 北京时间早上7点 (UTC 23:00)
+    - cron: '0 11 * * *'  # 北京时间晚上7点 (UTC 11:00)
+  workflow_dispatch:
+    # 允许手动触发
+
+jobs:
+  update-proxies:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+        ref: main
+      
+    - name: 设置Python环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4
+        
+    - name: 抓取并筛选代理列表
+      run: |
+        echo "开始抓取代理列表..."
+        python generate_proxy_list.py
+        echo "抓取完成，检查文件是否生成..."
+        if [ -f proxy.txt ]; then
+          echo "proxy.txt 文件已生成"
+          echo "文件内容预览："
+          head -5 proxy.txt
+        else
+          echo "proxy.txt 文件未生成"
+          exit 1
+        fi
+
+    - name: 更新 SOCKS5_PROXY 变量
+      env:
+        # 写 Variables 必须用 PAT（GITHUB_TOKEN 无权限）
+        # 请在仓库 Settings -> Secrets and variables -> Actions 中添加：
+        #   PAT_TOKEN = 个人访问令牌（fine-grained，权限勾选 Actions: Read and write）
+        GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+        echo "更新 SOCKS5_PROXY 环境变量..."
+
+        if [ -f socks5_proxy.txt ] && [ -s socks5_proxy.txt ]; then
+          # 读取所有 socks5 代理，按换行合并（Repository Variable 支持多行）
+          SOCKS5_VALUE=$(cat socks5_proxy.txt | sed '/^\s*$/d')
+          echo "将写入以下代理到 SOCKS5_PROXY："
+          echo "$SOCKS5_VALUE"
+
+          # GitHub API：先检查变量是否存在（GET），404 则创建（POST），否则更新（PATCH）
+          API="https://api.github.com/repos/${{ github.repository }}/actions/variables/SOCKS5_PROXY"
+          STATUS=$(curl -sI -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$API")
+
+          if [ "$STATUS" = "404" ]; then
+            echo "变量不存在，创建..."
+            curl -L -X POST "https://api.github.com/repos/${{ github.repository }}/actions/variables" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -d "{\"name\":\"SOCKS5_PROXY\",\"value\":$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$SOCKS5_VALUE")}"
+          else
+            echo "变量已存在，更新..."
+            curl -L -X PATCH "$API" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -d "{\"name\":\"SOCKS5_PROXY\",\"value\":$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$SOCKS5_VALUE")}"
+          fi
+        else
+          echo "socks5_proxy.txt 为空或不存在（可能当天没有香港/新加坡/中国的 SOCKS5 代理），跳过变量更新"
+        fi
+
+    - name: 提交更新
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+        git remote set-url origin https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }}.git
+        git add proxy.txt socks5_proxy.txt
+        git commit -m "更新代理列表" || echo "没有更改"
+        git push origin +main:main
