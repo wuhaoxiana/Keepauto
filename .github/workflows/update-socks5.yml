@@ -2,9 +2,8 @@ name: 更新 SOCKS5 代理列表
 
 on:
   schedule:
-    # 每天 UTC 00:05 执行
-    # 北京时间：每天 08:05
-    - cron: '5 0 * * *'
+    # 每 4 小时执行一次 (UTC 0/4/8/12/16/20 点)
+    - cron: '0 */4 * * *'
   workflow_dispatch:
 
 jobs:
@@ -65,16 +64,64 @@ jobs:
           echo "✅ 文件生成完成："
           ls -lh output/
 
-      # 更新 GitHub Actions Repository Variable
+      # 更新 GitHub Actions Repository Variable（只增不减 + 失效清理）
       - name: 🔐 更新仓库变量 SOCKS5_PROXY
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          REPO="${{ github.repository }}"
+
+          # 1. 读取现有变量（尚未创建则为空）
+          EXISTING=""
+          if gh variable list --repo "$REPO" | grep -q "SOCKS5_PROXY"; then
+            EXISTING=$(gh variable get SOCKS5_PROXY --repo "$REPO" 2>/dev/null || true)
+          fi
+          EXIST_COUNT=$(echo "$EXISTING" | grep -vc '^[[:space:]]*$' || true)
+          echo "现有变量节点数: ${EXIST_COUNT:-0}"
+
+          # 2. 本次筛选并测活成功的节点
+          NEW=$(cat /tmp/socks5_hk_sg_cn.txt 2>/dev/null || true)
+          NEW_COUNT=$(echo "$NEW" | grep -vc '^[[:space:]]*$' || true)
+          echo "本次可用节点数: ${NEW_COUNT:-0}"
+
+          # 3. 合并（只增不减）：现有 + 新增，去重后写入临时文件
+          TOTAL_BEFORE=$( { printf '%s\n' "$EXISTING"; printf '%s\n' "$NEW"; } | grep -cE '^socks5://' || true )
+          {
+            printf '%s\n' "$EXISTING"
+            printf '%s\n' "$NEW"
+          } | grep -E '^socks5://' | sort -u > /tmp/socks5_merged.txt
+
+          MERGE_COUNT=$(wc -l < /tmp/socks5_merged.txt)
+          DUP_COUNT=$(( ${TOTAL_BEFORE:-0} - MERGE_COUNT ))
+          echo "合并前总节点数: ${TOTAL_BEFORE:-0}"
+          echo "去重后节点数: ${MERGE_COUNT}"
+          echo "剔除重复项: ${DUP_COUNT}"
+
+          # 4. 失效清理：对合并后的全部节点统一测活，剔除失效的
+          python3 free-socks5/clean_dead.py \
+            /tmp/socks5_merged.txt \
+            /tmp/socks5_clean.txt
+
+          ALIVE=$(wc -l < /tmp/socks5_clean.txt | tr -d ' ')
+          DEAD=$(( MERGE_COUNT - ALIVE ))
+          echo "清理后可用节点数: ${ALIVE}"
+          echo "失效节点已剔除: ${DEAD}"
+
+          # 5. 写回变量（若清理后为空则保留原合并结果，避免误删全部节点）
+          if [ "${ALIVE}" -gt 0 ]; then
+            BODY_FILE=/tmp/socks5_clean.txt
+            echo "✅ 已清理 ${DEAD} 个失效节点"
+          else
+            BODY_FILE=/tmp/socks5_merged.txt
+            echo "⚠️ 清理后无可用节点（可能网络抖动），本次保留合并结果不清理"
+          fi
+
           gh variable set SOCKS5_PROXY \
-            --body "$(cat /tmp/socks5_hk_sg_cn.txt)" \
-            --repo "${{ github.repository }}"
+            --body "$(cat ${BODY_FILE})" \
+            --repo "$REPO"
 
           echo "✅ SOCKS5_PROXY 更新成功！"
+          echo "📊 最终变量节点数: $(wc -l < ${BODY_FILE} | tr -d ' ')"
 
       # 提交筛选结果到仓库（默认关闭）
       - name: 💾 提交并推送筛选结果
