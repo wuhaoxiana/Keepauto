@@ -29,7 +29,7 @@ jobs:
       - name: 🌐 拉取最新 SOCKS5 代理列表
         run: |
           curl -s --max-time 30 \
-            "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt" \
+            "https://raw.githubusercontent.com/dpangestuw/Free-Proxy/refs/heads/main/socks5_proxies.txt" \
             -o /tmp/socks5_raw.txt
 
           echo "原始节点数：$(wc -l < /tmp/socks5_raw.txt)"
