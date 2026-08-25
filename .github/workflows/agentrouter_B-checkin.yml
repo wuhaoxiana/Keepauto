@@ -63,8 +63,8 @@ jobs:
       - name: Setup Proxy
         working-directory: ./agentrouter_B
         env:
-          NODE_LINK: ${{ secrets.NODE_LINK }}
-          PROXY_CONFIG_URL: ${{ secrets.PROXY_CONFIG_URL }}
+          NODE_LINK: ${{ vars.NODE_LINK }}
+          PROXY_CONFIG_URL: ${{ vars.PROXY_CONFIG_URL }}
         run: |
           chmod +x setup-proxy.sh
           bash setup-proxy.sh
