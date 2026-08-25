@@ -1,8 +1,8 @@
 name: AgentRouter_B 每日签到
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
+#  schedule:
+#    - cron: '0 2 * * *'
   # 支持手动触发
   workflow_dispatch:
 
