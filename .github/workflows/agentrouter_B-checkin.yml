@@ -1,4 +1,4 @@
-name: Ayrouter Daily Check-in
+name: AgentRouter_B 每日签到
 
 on:
   schedule:
