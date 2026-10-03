@@ -21,7 +21,7 @@ jobs:
 
     permissions:
       actions: write
-      contents: read
+      contents: write
 
     steps:
       - name: 🧹 清理历史工作流运行记录
@@ -119,3 +119,17 @@ jobs:
             core.info(
               `清理完成，共删除 ${totalDeleted} 条历史工作流记录`
             );
+
+      # 更新时间到time.txt,避免6个月未更新导致工作流暂停
+      - name: 🕒 更新时间
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          echo "$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" > time.txt
+          git add time.txt
+          if git diff --cached --quiet; then
+            echo "No need to commit"
+          else
+            git commit -m "⏱️ Auto Update by Github Actions $(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')"
+            git push origin main
+          fi
